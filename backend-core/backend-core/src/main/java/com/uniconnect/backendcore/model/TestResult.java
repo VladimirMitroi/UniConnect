@@ -1,4 +1,18 @@
 package com.uniconnect.backendcore.model;
 
+import jakarta.persistence.*;
+import lombok.Data;
+import java.time.LocalDateTime;
+
+@Entity
+@Data
 public class TestResult {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String studentEmail; // Luat din token-ul JWT
+    private String courseName;
+    private Double score;
+    private LocalDateTime date;
 }

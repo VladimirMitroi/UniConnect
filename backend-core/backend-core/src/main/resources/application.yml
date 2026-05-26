@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: backend-core
+  datasource:
+    url: jdbc:postgresql://localhost:5432/uniconnect_db
+    username: uniconnect_user
+    password: uniconnect_password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+server:
+  port: 8080
+
+minio:
+  url: http://localhost:9000 # Folosim portul 9000 pentru API, nu 9001 (care e pentru interfața web)
+  access-key: minioadmin
+  secret-key: minioadmin123
+  bucket-name: uniconnect-documents
