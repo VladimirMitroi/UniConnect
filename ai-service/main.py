@@ -40,6 +40,7 @@ def rabbitmq_consumer():
             nume_fisier = mesaj_primit.get("fileName", body_str)
             numar_intrebari = mesaj_primit.get("numQuestions", 3)
             tip_cerut = mesaj_primit.get("questionType", "single")
+            test_id = mesaj_primit.get("testId")
         except json.JSONDecodeError:
             pass # Dacă e un mesaj vechi care nu e JSON, păstrează valorile implicite de mai sus
             
@@ -120,14 +121,20 @@ def rabbitmq_consumer():
                 
             try:
                 date_json = json.loads(raw_text)
+
+                limita = int(numar_intrebari) 
+            
+            # Păstrăm strict primele N întrebări (ex: primele 10)
+                date_json = date_json[:limita] 
+            
+            # Punem testId-ul doar pe cele pe care le păstrăm
+                for intrebare in date_json:
+                    intrebare["testId"] = test_id 
+                
+                mesaj_final_pentru_java = json.dumps(date_json)
             except json.JSONDecodeError as e:
                 print(f"[❌ EROARE CRITICĂ] AI-ul nu a generat JSON valid. Text extras: {raw_text}")
                 raise e # Oprirea execuției pentru acest fișier
-            
-            for intrebare in date_json:
-                intrebare["courseName"] = nume_fisier 
-                
-            mesaj_final_pentru_java = json.dumps(date_json)
             
             print("\n[🧠 REZULTAT AI CURĂȚAT ȘI MODIFICAT]")
             print(mesaj_final_pentru_java[:300] + "... [TRUNCHIAT]") # Printăm doar începutul să nu umplem consola

@@ -17,4 +17,5 @@ public class TestEntity {
     private String title;      // Numele dat de tine (ex: "Test 1")
     private String courseName; // Numele PDF-ului sursă
     private LocalDateTime createdAt;
+    private boolean isReady = false;
 }

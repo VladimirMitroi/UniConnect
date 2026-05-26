@@ -50,16 +50,8 @@ public class QuestionController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 1. Obținem lista de nume de cursuri unice (pentru drop-down)
-    @GetMapping("/courses")
-    public ResponseEntity<List<String>> getDistinctCourses() {
-        // Aceasta este o metodă pe care va trebui să o adaugi în QuestionRepository
-        return ResponseEntity.ok(questionRepository.findDistinctCourseNames());
-    }
-
-    // 2. Filtrăm întrebările după numele cursului
-    @GetMapping("/filter")
-    public ResponseEntity<List<Question>> getQuestionsByCourse(@RequestParam String name) {
-        return ResponseEntity.ok(questionRepository.findByCourseName(name));
+    @GetMapping("/filter-by-test")
+    public ResponseEntity<List<Question>> getQuestionsByTest(@RequestParam Long testId) {
+        return ResponseEntity.ok(questionRepository.findByTestId(testId));
     }
 }

@@ -1,10 +1,50 @@
-import { Outlet, Link, NavLink } from 'react-router-dom';
+import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
 
 function MainLayout() {
+  const navigate = useNavigate();
+  
+  // Citim datele utilizatorului din localStorage (punem fallback-uri de siguranță)
+  const userRole = localStorage.getItem('uniconnect_role') || 'ROLE_STUDENT'; 
+  const userName = localStorage.getItem('uniconnect_name') || 'Utilizator';
+  
+  // Generăm inițialele pentru avatar (ex: "Vladimir Mitroi" -> "VM")
+  const getInitials = (name) => {
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+
+  const handleLogout = (e) => {
+    e.preventDefault();
+    localStorage.removeItem('uniconnect_token');
+    localStorage.removeItem('uniconnect_role');
+    localStorage.removeItem('uniconnect_name');
+    navigate('/login');
+  };
+
+  // Un mic component reutilizabil pentru link-uri ca să păstrăm codul curat
+  const MenuLink = ({ to, icon, text }) => (
+    <NavLink 
+      to={to} 
+      className={({ isActive }) => 
+        `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+          isActive 
+            ? 'bg-primary/10 text-primary font-medium' 
+            : 'text-[#0d121b] dark:text-gray-300 hover:bg-[#f8f9fc] dark:hover:bg-[#2d3748]'
+        }`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          <span className="material-symbols-outlined" style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}>{icon}</span>
+          {text}
+        </>
+      )}
+    </NavLink>
+  );
+
   return (
     <div className="bg-background-light dark:bg-background-dark text-[#0d121b] dark:text-white flex h-screen overflow-hidden font-display">
       
-      {/* SIDEBAR (Meniul din stânga) - Extras din codul tău */}
+      {/* SIDEBAR */}
       <aside className="w-64 bg-white dark:bg-[#1a2230] border-r border-[#e7ebf3] dark:border-[#2d3748] flex-col hidden md:flex z-20">
         <div className="h-16 flex items-center px-6 border-b border-[#e7ebf3] dark:border-[#2d3748]">
           <div className="flex items-center gap-2 text-primary">
@@ -15,107 +55,82 @@ function MainLayout() {
 
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <p className="text-[#4c669a] dark:text-gray-400 text-xs font-semibold uppercase tracking-wider px-3">Meniu Principal</p>
+            <p className="text-[#4c669a] dark:text-gray-400 text-xs font-semibold uppercase tracking-wider px-3 mb-1">
+              Meniu {userRole === 'ROLE_STUDENT' ? 'Student' : userRole === 'ROLE_TEACHER' ? 'Profesor' : 'Admin'}
+            </p>
             
-            {/* Buton Catalog */}
-            <NavLink 
-              to="/catalog" 
-              className={({ isActive }) => 
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                  isActive 
-                    ? 'bg-primary/10 text-primary font-medium' 
-                    : 'text-[#0d121b] dark:text-gray-300 hover:bg-[#f8f9fc] dark:hover:bg-[#2d3748]'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <span className="material-symbols-outlined" style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}>grid_view</span>
-                  Catalog Cursuri
-                </>
-              )}
-            </NavLink>
+            {/* ========================================== */}
+            {/* MENIU SPECIFIC PENTRU STUDENTI             */}
+            {/* ========================================== */}
+            {userRole === 'ROLE_STUDENT' && (
+              <>
+                <MenuLink to="/catalog" icon="grid_view" text="Cursurile Mele" />
+                <MenuLink to="/explorare-cursuri" icon="travel_explore" text="Caută Cursuri Noi" />
+                <MenuLink to="/note-student" icon="assignment" text="Notele Mele" />
+                <MenuLink to="/orar" icon="calendar_month" text="Orar" />
+              </>
+            )}
 
-            {/* Buton Dashboard Profesor */}
-            <NavLink 
-              to="/dashboard-profesor" 
-              className={({ isActive }) => 
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                  isActive 
-                    ? 'bg-primary/10 text-primary font-medium' 
-                    : 'text-[#0d121b] dark:text-gray-300 hover:bg-[#f8f9fc] dark:hover:bg-[#2d3748]'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <span className="material-symbols-outlined" style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}>dashboard</span>
-                  Dashboard Profesor
-                </>
-              )}
-            </NavLink>
+            {/* ========================================== */}
+            {/* MENIU SPECIFIC PENTRU PROFESORI            */}
+            {/* ========================================== */}
+            {userRole === 'ROLE_TEACHER' && (
+              <>
+                <MenuLink to="/dashboard-profesor" icon="dashboard" text="Panou de Control" />
+                <MenuLink to="/note" icon="format_list_numbered" text="Catalog Note" />
+                <MenuLink to="/orar" icon="calendar_month" text="Orar" />
+              </>
+            )}
 
-            <NavLink 
-              to="/note" 
-              className={({ isActive }) => 
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                  isActive 
-                    ? 'bg-primary/10 text-primary font-medium' 
-                    : 'text-[#0d121b] dark:text-gray-300 hover:bg-[#f8f9fc] dark:hover:bg-[#2d3748]'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <span className="material-symbols-outlined" style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}>format_list_numbered</span>
-                  Catalog Note
-                </>
-              )}
-            </NavLink>
+            {/* ========================================== */}
+            {/* MENIU SPECIFIC PENTRU ADMINI               */}
+            {/* ========================================== */}
+            {userRole === 'ROLE_ADMIN' && (
+              <>
+                <MenuLink to="/admin/utilizatori" icon="manage_accounts" text="Gestiune Utilizatori" />
+                <MenuLink to="/admin/cursuri" icon="account_tree" text="Gestiune Cursuri" />
+                <MenuLink to="/admin/sistem" icon="settings" text="Setări Sistem" />
+              </>
+            )}
 
-            {/* Acestea rămân de formă deocamdată */}
-            <a href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#0d121b] dark:text-gray-300 hover:bg-[#f8f9fc] dark:hover:bg-[#2d3748] transition-colors">
-              <span className="material-symbols-outlined">calendar_month</span>
-              Orar
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#0d121b] dark:text-gray-300 hover:bg-[#f8f9fc] dark:hover:bg-[#2d3748] transition-colors">
-              <span className="material-symbols-outlined">assignment</span>
-              Note & Evaluări
-            </a>
           </div>
         </div>
 
+        {/* BUTON DECONECTARE */}
         <div className="p-4 border-t border-[#e7ebf3] dark:border-[#2d3748]">
-          <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mt-1">
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mt-1"
+          >
             <span className="material-symbols-outlined">logout</span>
             <span className="text-sm font-medium">Deconectare</span>
-          </Link>
+          </button>
         </div>
       </aside>
 
-      {/* ZONA CENTRALĂ (Header + Conținut Dinamic) */}
+      {/* ZONA CENTRALĂ */}
       <div className="flex-1 flex flex-col h-full relative overflow-hidden">
         
         {/* HEADER BARA SUS */}
         <header className="h-16 bg-white dark:bg-[#1a2230] border-b border-[#e7ebf3] dark:border-[#2d3748] flex items-center justify-between px-6 shrink-0 z-10">
           <div className="flex-1 max-w-xl px-4">
-             {/* Aici era search bar-ul tău, îl poți adăuga înapoi */}
              <span className="text-[#4c669a] font-medium">Platforma Educațională</span>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3 pl-4 border-l border-[#e7ebf3] dark:border-[#2d3748]">
               <div className="hidden sm:flex flex-col items-end">
-                <span className="text-sm font-bold text-[#0d121b] dark:text-white leading-none">Vladimir Mitroi</span>
-                <span className="text-xs text-[#4c669a] leading-none mt-1">Student / Profesor</span>
+                {/* Afișăm Numele și Rolul real */}
+                <span className="text-sm font-bold text-[#0d121b] dark:text-white leading-none">{userName}</span>
+                <span className="text-[11px] uppercase font-bold text-[#4c669a] leading-none mt-1">{userRole}</span>
               </div>
-              <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
-                VM
+              <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white font-bold tracking-wider shadow-sm">
+                {getInitials(userName)}
               </div>
             </div>
           </div>
         </header>
 
-        {/* AICI ESTE MAGIA: Aici se va încărca Catalogul sau Dashboard-ul */}
+        {/* CONTINUT DINAMIC */}
         <main className="flex-1 overflow-y-auto p-6 md:p-8 scroll-smooth bg-background-light dark:bg-background-dark">
           <Outlet /> 
         </main>

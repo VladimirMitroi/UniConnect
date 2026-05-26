@@ -100,4 +100,11 @@ public class DocumentController {
         testRepository.deleteById(id);
         return ResponseEntity.ok("Test șters cu succes.");
     }
+
+    // --- NOU: Ruta pentru a aduce lista de teste în Dashboard și în SustinereTest ---
+    @GetMapping("/tests")
+    public ResponseEntity<List<TestEntity>> getAllTests() {
+        // Folosim metoda care le aduce sortate cu cele mai noi sus
+        return ResponseEntity.ok(testRepository.findByIsReadyTrueOrderByCreatedAtDesc());
+    }
 }

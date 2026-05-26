@@ -1,63 +1,91 @@
 package com.uniconnect.backendcore.config;
 
-import com.uniconnect.backendcore.model.Student;
-import com.uniconnect.backendcore.model.User;
-import com.uniconnect.backendcore.repository.StudentRepository;
-import com.uniconnect.backendcore.repository.UserRepository;
-import org.springframework.amqp.core.Queue;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.uniconnect.backendcore.model.*;
+import com.uniconnect.backendcore.repository.*;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDate;
 
-@Configuration
-public class DataSeeder {
+@Component
+@RequiredArgsConstructor
+public class DataSeeder implements CommandLineRunner {
 
-    // ACEASTA ESTE PIESA LIPSĂ: Definim cutia poștală explicit
-    @Bean
-    public Queue testQueue() {
-        return new Queue("test_queue", true);
-    }
+    private final UserRepository userRepository;
+    private final AdminRepository adminRepository;
+    private final ProfessorRepository professorRepository;
+    private final StudentRepository studentRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    // NOU: Declarăm și coada de întoarcere
-    @Bean
-    public Queue resultsQueue() {
-        return new Queue("results_queue", true);
-    }
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
 
-    @Bean
-    CommandLineRunner initDatabase(UserRepository userRepository, StudentRepository studentRepository, RabbitTemplate rabbitTemplate) {
-        return args -> {
+        // Verificăm dacă baza de date este goală, ca să nu duplicăm la fiecare restart
+        if (userRepository.count() == 0) {
+            System.out.println("⏳ [Seeder] Baza de date este goală. Generăm utilizatorii din terminal...");
 
-            // 1. Trimitem mesajul de test către RabbitMQ (în coada "test_queue")
+            // ==========================================
+            // 1. ADMIN
+            // ==========================================
+            User adminUser = new User();
+            adminUser.setEmail("admin@uniconnect.ro");
+            adminUser.setPassword(passwordEncoder.encode("parola123")); // Criptare reală generată aici
+            adminUser.setRole("ROLE_ADMIN");
+            userRepository.save(adminUser);
 
-            // 2. Verificăm dacă există deja date pentru a nu insera duplicate la fiecare restart
-            if (userRepository.count() == 0) {
+            Admin admin = new Admin();
+            admin.setUser(adminUser);
+            admin.setFirstName("Super");
+            admin.setLastName("Administrator");
+            adminRepository.save(admin);
 
-                // Creăm entitatea de bază (Autentificarea)
-                User user = new User();
-                user.setEmail("student@uniconnect.com");
-                user.setPassword("parola_hash_simulata");
-                user.setRole("STUDENT");
+            // ==========================================
+            // 2. PROFESOR
+            // ==========================================
+            User profUser = new User();
+            profUser.setEmail("profesor@uniconnect.ro");
+            profUser.setPassword(passwordEncoder.encode("parola123"));
+            profUser.setRole("ROLE_TEACHER");
+            userRepository.save(profUser);
 
-                User savedUser = userRepository.save(user);
+            Professor prof = new Professor();
+            prof.setUser(profUser);
+            prof.setFirstName("Ion");
+            prof.setLastName("Popescu");
+            prof.setAcademicRank("Profesor");
+            prof.setDepartment("Cibernetică Economică");
+            prof.setOfficeHours("Luni 14:00 - 16:00");
+            professorRepository.save(prof);
 
-                // Creăm profilul de student și îl legăm de User
-                Student student = new Student();
-                student.setUser(savedUser);
-                student.setFirstName("Alexandru-Vladimir");
-                student.setLastName("Mitroi");
-                student.setRegistrationNumber("MAT12345");
-                student.setEnrollmentYear(2023);
-                student.setStudyYear(3);
-                student.setDateOfBirth(LocalDate.of(2004, 8, 19));
-                student.setFundingType("BUGET");
+            // ==========================================
+            // 3. STUDENT
+            // ==========================================
+            User studentUser = new User();
+            studentUser.setEmail("student@uniconnect.ro");
+            studentUser.setPassword(passwordEncoder.encode("parola123"));
+            studentUser.setRole("ROLE_STUDENT");
+            userRepository.save(studentUser);
 
-                studentRepository.save(student);
+            Student student = new Student();
+            student.setUser(studentUser);
+            student.setFirstName("Alexandru Vladimir");
+            student.setLastName("Mitroi");
+            student.setRegistrationNumber("MAT-1045");
+            student.setEnrollmentYear(2023);
+            student.setStudyYear(3);
+            student.setSeries("A");
+            student.setGroupName("1045");
+            student.setFundingType("BUGET");
+            student.setDateOfBirth(LocalDate.of(2003, 5, 15));
+            studentRepository.save(student);
 
-                System.out.println("Datele de test pentru Alexandru-Vladimir au fost inserate cu succes!");
-            }
-        };
+            System.out.println("✅ [Seeder] Utilizatorii (Admin, Profesor, Student) au fost generați cu succes!");
+        } else {
+            System.out.println("⚡ [Seeder] Utilizatorii există deja. Trecem mai departe.");
+        }
     }
 }

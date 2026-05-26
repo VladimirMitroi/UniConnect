@@ -33,14 +33,24 @@ function Login() {
         password: password
       });
 
-      // Dacă a mers, Java ne dă token-ul. Îl salvăm în "buzunarul" browserului (Local Storage)
+      // Salvăm datele în LocalStorage
       const token = response.data.token;
+      const userRole = response.data.role; // Preluăm rolul
+      
       localStorage.setItem('uniconnect_token', token);
+      localStorage.setItem('uniconnect_role', userRole); 
+      localStorage.setItem('uniconnect_name', response.data.name);
       
       console.log("Logare cu succes! Token salvat:", token);
 
-      // Redirecționăm către interfața profesorului
-      navigate('/dashboard-profesor');
+      // REDIRECȚIONARE DINAMICĂ ÎN FUNCȚIE DE ROL
+      if (userRole === 'ROLE_ADMIN') {
+        navigate('/admin/sistem');
+      } else if (userRole === 'ROLE_TEACHER') {
+        navigate('/dashboard-profesor');
+      } else {
+        navigate('/catalog'); // Default pentru Student
+      }
 
     } catch (err) {
       console.error("Eroare la logare:", err);
