@@ -18,6 +18,6 @@ public class EnrollmentRequest {
     private String studentName;
     private String studentGrupa;
 
-    private String status; // PENDING, APPROVED, REJECTED
+    private String status;
     private LocalDateTime createdAt = LocalDateTime.now();
 }

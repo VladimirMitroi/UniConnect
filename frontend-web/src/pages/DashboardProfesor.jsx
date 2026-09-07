@@ -1,19 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import { getProfileFromStorage, loadAndStoreProfile } from '../api/auth';
+import {
+  fetchAvailableFiles,
+  fetchExistingTests,
+  fetchPendingRequests,
+  respondToRequest,
+  uploadFile,
+  generateTest,
+  deleteTest,
+  fetchProfessorCourses,
+} from '../api/professor';
+import {
+  fetchQuestionsByTest,
+} from '../api/courses';
+import {
+  updateQuestion,
+  deleteQuestion,
+} from '../api/questions';
+import { cleanFileName } from '../utils/fileUtils';
 
 function DashboardProfesor() {
-  // Stări pentru Liste
   const [availableFiles, setAvailableFiles] = useState([]);
   const [existingTests, setExistingTests] = useState([]);
   
-  // NOU: Stare pentru cererile de înscriere
   const [pendingRequests, setPendingRequests] = useState([]);
-  const PROFESSOR_ID = 1; // ID temporar pentru POC (în producție va fi luat din tokenul JWT)
+  const [professorId, setProfessorId] = useState(null);
 
-  // Stări pentru Upload PDF
   const [isUploading, setIsUploading] = useState(false);
 
-  // Stări pentru Generare Test Nou
   const [selectedFileName, setSelectedFileName] = useState('');
   const [testTitle, setTestTitle] = useState('');
   const [numQuestions, setNumQuestions] = useState(5);
@@ -21,39 +35,42 @@ function DashboardProfesor() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPolling, setIsPolling] = useState(false); // Controlează radarul de căutare
 
-  // Stări pentru Vizualizare și Editare Test
+  const [professorCourses, setProfessorCourses] = useState([]);
+  const [selectedCourseInstanceId, setSelectedCourseInstanceId] = useState('');
+
   const [selectedTest, setSelectedTest] = useState(null);
   const [editingQuestions, setEditingQuestions] = useState([]);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
 
-  // NOU: Un "seif" de memorie care ține minte lungimea exactă a listei înainte de polling
   const testsLengthRef = useRef(0);
 
-  // Sincronizăm mereu seiful de memorie cu realitatea de pe ecran
   useEffect(() => {
     testsLengthRef.current = existingTests.length;
   }, [existingTests]);
 
-  // Încărcarea inițială a datelor
   useEffect(() => {
-    fetchInitialData();
+    loadProfileAndFetch();
   }, []);
 
-  // NOU & REPARAT: Polling complet izolat, imun la blocaje de rețea sau interfață
+  const loadProfileAndFetch = async () => {
+    let profile = getProfileFromStorage();
+    if (!profile) {
+      profile = await loadAndStoreProfile();
+    }
+
+    const profId = profile?.professorId ?? null;
+    setProfessorId(profId);
+    await fetchInitialData(profId);
+  };
+
   useEffect(() => {
     let pollingInterval;
 
     if (isPolling) {
       pollingInterval = setInterval(async () => {
-        const token = localStorage.getItem('uniconnect_token');
         try {
-          const response = await axios.get('http://localhost:8080/api/documents/tests', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          const noileTeste = await fetchExistingTests();
           
-          const noileTeste = response.data;
-          
-          // Dacă numărul de teste din DB este mai mare decât ce aveam în seif când am pornit generatorul
           if (noileTeste.length > testsLengthRef.current) {
             setIsPolling(false); // Oprim radarul imediat, am găsit ținta!
           }
@@ -70,58 +87,55 @@ function DashboardProfesor() {
     };
   }, [isPolling]);
 
-  const fetchInitialData = async () => {
-    await fetchAvailableFiles();
-    await fetchExistingTests();
-    await fetchPendingRequests(); // NOU: Aducem și cererile
+  const fetchInitialData = async (profId) => {
+    await loadAvailableFiles();
+    await loadExistingTests();
+    if (profId != null) {
+      await loadPendingRequests(profId);
+      await loadProfessorCourses(profId);
+    }
   };
 
-  const fetchAvailableFiles = async () => {
-    const token = localStorage.getItem('uniconnect_token');
+  const loadAvailableFiles = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/documents/files', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setAvailableFiles(response.data);
+      const data = await fetchAvailableFiles();
+      setAvailableFiles(data);
     } catch (error) {
       console.error("Eroare la aducerea bibliotecii:", error);
     }
   };
 
-  const fetchExistingTests = async () => {
-    const token = localStorage.getItem('uniconnect_token');
+  const loadExistingTests = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/documents/tests', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setExistingTests(response.data);
+      const data = await fetchExistingTests();
+      setExistingTests(data);
     } catch (error) {
       console.error("Eroare la aducerea testelor:", error);
     }
   };
 
-  // NOU: Funcție pentru a aduce cererile în așteptare
-  const fetchPendingRequests = async () => {
-    const token = localStorage.getItem('uniconnect_token');
+  const loadPendingRequests = async (profId) => {
     try {
-      const response = await axios.get(`http://localhost:8080/api/courses/professor/requests?professorId=${PROFESSOR_ID}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setPendingRequests(response.data);
+      const data = await fetchPendingRequests(profId);
+      setPendingRequests(data);
     } catch (error) {
       console.error("Eroare la aducerea cererilor de înscriere:", error);
     }
   };
 
-  // NOU: Handler pentru aprobare/respingere cereri
-  const handleRespondRequest = async (requestId, status) => {
-    const token = localStorage.getItem('uniconnect_token');
+  const loadProfessorCourses = async (profId) => {
     try {
-      await axios.put(`http://localhost:8080/api/courses/professor/respond-request/${requestId}?status=${status}`, {}, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const data = await fetchProfessorCourses(profId);
+      setProfessorCourses(data);
+    } catch (error) {
+      console.error("Eroare la aducerea cursurilor profesorului:", error);
+    }
+  };
+
+  const handleRespondRequest = async (requestId, status) => {
+    try {
+      await respondToRequest(requestId, status);
       
-      // Eliminăm cererea din lista vizuală după procesare
       setPendingRequests(pendingRequests.filter(r => r.id !== requestId));
     } catch (err) {
       alert("Eroare la procesarea cererii.");
@@ -132,19 +146,10 @@ function DashboardProfesor() {
     const file = e.target.files[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('file', file);
-    const token = localStorage.getItem('uniconnect_token');
-
     try {
       setIsUploading(true);
-      await axios.post('http://localhost:8080/api/documents/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      fetchAvailableFiles();
+      await uploadFile(file);
+      loadAvailableFiles();
     } catch (error) {
       alert("Eroare la upload.");
     } finally {
@@ -159,28 +164,22 @@ function DashboardProfesor() {
       return;
     }
 
-    const token = localStorage.getItem('uniconnect_token');
-    const formData = new FormData();
-    formData.append('fileName', selectedFileName);
-    formData.append('testTitle', testTitle);
-    formData.append('numQuestions', numQuestions);
-    formData.append('questionType', questionType);
-
     try {
       setIsGenerating(true);
       
-      // Am fixat valoarea curentă în seif chiar înainte de a trimite cererea
       testsLengthRef.current = existingTests.length;
 
-      await axios.post('http://localhost:8080/api/documents/generate', formData, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      await generateTest({
+        fileName: selectedFileName,
+        testTitle,
+        numQuestions,
+        questionType,
+        courseInstanceId: selectedCourseInstanceId || undefined,
       });
       
-      // MODIFICAT: Fără alert() blocant! Interfața pornește radarul instantaneu.
       setTestTitle('');
       setIsPolling(true); 
 
-      // Siguranță: oprim radarul după 1 minut dacă serverul pică
       setTimeout(() => setIsPolling(false), 60000);
 
     } catch (error) {
@@ -194,11 +193,8 @@ function DashboardProfesor() {
     e.stopPropagation();
     if (!window.confirm("Sigur vrei să ștergi acest test și toate întrebările lui?")) return;
 
-    const token = localStorage.getItem('uniconnect_token');
     try {
-      await axios.delete(`http://localhost:8080/api/documents/test/${testId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await deleteTest(testId);
       setExistingTests(existingTests.filter(t => t.id !== testId));
       if (selectedTest?.id === testId) {
         setSelectedTest(null);
@@ -212,12 +208,9 @@ function DashboardProfesor() {
   const handleSelectTestForEdit = async (test) => {
     setSelectedTest(test);
     setIsLoadingQuestions(true);
-    const token = localStorage.getItem('uniconnect_token');
     try {
-      const response = await axios.get(`http://localhost:8080/api/questions/filter-by-test?testId=${test.id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setEditingQuestions(response.data);
+      const data = await fetchQuestionsByTest(test.id);
+      setEditingQuestions(data);
     } catch (error) {
       alert("Nu s-au putut încărca întrebările.");
     } finally {
@@ -258,11 +251,8 @@ function DashboardProfesor() {
   };
 
   const handleSaveQuestionEdit = async (question) => {
-    const token = localStorage.getItem('uniconnect_token');
     try {
-      await axios.put(`http://localhost:8080/api/questions/${question.id}`, question, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await updateQuestion(question.id, question);
       alert("Întrebare salvată!");
     } catch (error) {
       alert("Eroare la salvare.");
@@ -272,25 +262,15 @@ function DashboardProfesor() {
   const handleDeleteQuestion = async (questionId) => {
     if (!window.confirm("Sigur vrei să ștergi această întrebare?")) return;
 
-    const token = localStorage.getItem('uniconnect_token');
     try {
-      await axios.delete(`http://localhost:8080/api/questions/${questionId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await deleteQuestion(questionId);
       setEditingQuestions(editingQuestions.filter(q => q.id !== questionId));
     } catch (error) {
       alert("Eroare la ștergere.");
     }
   };
 
-  const cleanFileName = (name) => {
-    if (!name) return "";
-    // Verificăm dacă are structura de hash (lungime > 37 și caracterul 36 este '_')
-    if (name.length > 37 && name.charAt(36) === '_') {
-      return name.substring(37);
-    }
-    return name;
-  };
+
 
   return (
     <div className="max-w-6xl mx-auto flex flex-col gap-10 pb-20 p-8">
@@ -347,6 +327,23 @@ function DashboardProfesor() {
                     />
                   </div>
 
+                  {/* NOU: Dropdown selecție curs */}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">Asociere Curs (pentru restricționare acces studenți)</label>
+                    <select 
+                      value={selectedCourseInstanceId}
+                      onChange={(e) => setSelectedCourseInstanceId(e.target.value)}
+                      className="w-full p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-white outline-none"
+                    >
+                      <option value="">Fără restricție (vizibil tuturor)</option>
+                      {professorCourses.map((course) => (
+                        <option key={course.id} value={course.id}>
+                          {course.name} — Grupa {course.grupa} (Seria {course.serie})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">Sursă PDF</label>
@@ -399,7 +396,6 @@ function DashboardProfesor() {
               </div>
             </>
           ) : (
-            /* Vizualizator și Editor Întrebări */
             <div className="bg-white dark:bg-[#1a2230] rounded-xl p-6 shadow-sm border border-[#e7ebf3] dark:border-[#2d3748] space-y-6">
               <div className="flex justify-between items-center border-b pb-4">
                 <div>
@@ -439,7 +435,6 @@ function DashboardProfesor() {
                         {q.options && q.options.map((opt, optIndex) => {
                           const isCorrect = q.correctAnswers?.includes(opt);
                           
-                          // NOU: Verificăm dacă e single choice pentru a schimba forma
                           const isSingle = q.type === 'single' || !q.type; 
 
                           return (

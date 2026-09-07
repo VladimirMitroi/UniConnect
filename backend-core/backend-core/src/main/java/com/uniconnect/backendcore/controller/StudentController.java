@@ -3,6 +3,7 @@ package com.uniconnect.backendcore.controller;
 import com.uniconnect.backendcore.dto.StudentResponseDTO;
 import com.uniconnect.backendcore.service.StudentService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,10 +20,10 @@ public class StudentController {
         this.studentService = studentService;
     }
 
-    // Endpoint pentru a prelua toți studenții
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
     public ResponseEntity<List<StudentResponseDTO>> getAllStudents() {
         List<StudentResponseDTO> students = studentService.getAllStudents();
-        return ResponseEntity.ok(students); // Returnează HTTP 200 OK + lista JSON
+        return ResponseEntity.ok(students);
     }
 }

@@ -26,7 +26,7 @@ public class Professor {
     private String lastName;
 
     @Column(name = "academic_rank", length = 50)
-    private String academicRank; // Ex: "Asistent", "Lector", "Profesor"
+    private String academicRank;
 
     @Column(length = 100)
     private String department;

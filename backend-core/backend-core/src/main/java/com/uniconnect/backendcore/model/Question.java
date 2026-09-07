@@ -11,7 +11,7 @@ public class Question {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long testId; // Legătura cu TestEntity
+    private Long testId;
 
     @Column(columnDefinition = "TEXT")
     private String text;

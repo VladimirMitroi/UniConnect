@@ -2,7 +2,9 @@ package com.uniconnect.backendcore.controller;
 
 import com.uniconnect.backendcore.model.Question;
 import com.uniconnect.backendcore.repository.QuestionRepository;
+import com.uniconnect.backendcore.repository.TestRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,20 +14,22 @@ import java.util.List;
 public class QuestionController {
 
     private final QuestionRepository questionRepository;
+    private final TestRepository testRepository;
 
-    public QuestionController(QuestionRepository questionRepository) {
+    public QuestionController(QuestionRepository questionRepository, TestRepository testRepository) {
         this.questionRepository = questionRepository;
+        this.testRepository = testRepository;
     }
 
-    // Endpoint pentru a extrage toate grilele din baza de date
     @GetMapping
+    @PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
     public ResponseEntity<List<Question>> getAllQuestions() {
         List<Question> questions = questionRepository.findAll();
         return ResponseEntity.ok(questions);
     }
 
-    // Endpoint pentru actualizarea unei grile
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
     public ResponseEntity<Question> updateQuestion(@PathVariable Long id, @RequestBody Question updatedQuestion) {
         return questionRepository.findById(id)
                 .map(existingQuestion -> {
@@ -39,8 +43,8 @@ public class QuestionController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Endpoint pentru ștergerea unei grile
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
     public ResponseEntity<?> deleteQuestion(@PathVariable Long id) {
         return questionRepository.findById(id)
                 .map(question -> {
@@ -51,7 +55,26 @@ public class QuestionController {
     }
 
     @GetMapping("/filter-by-test")
+    @PreAuthorize("hasRole('STUDENT') or hasRole('TEACHER') or hasRole('ADMIN')")
     public ResponseEntity<List<Question>> getQuestionsByTest(@RequestParam Long testId) {
         return ResponseEntity.ok(questionRepository.findByTestId(testId));
+    }
+
+    @GetMapping("/course/{courseId}")
+    @PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+    public ResponseEntity<List<Question>> getCourseQuestionBank(@PathVariable Long courseId) {
+        return ResponseEntity.ok(questionRepository.findByCourseInstanceId(courseId));
+    }
+
+    @GetMapping("/courses")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ResponseEntity<List<String>> getCourseNames() {
+        return ResponseEntity.ok(testRepository.findDistinctReadyCourseNames());
+    }
+
+    @GetMapping("/filter")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ResponseEntity<List<Question>> filterByCourseName(@RequestParam("name") String name) {
+        return ResponseEntity.ok(questionRepository.findByCourseName(name));
     }
 }

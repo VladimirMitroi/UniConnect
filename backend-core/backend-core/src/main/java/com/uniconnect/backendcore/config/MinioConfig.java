@@ -19,7 +19,6 @@ public class MinioConfig {
 
     @Bean
     public MinioClient minioClient() {
-        // Construim "clientul" care se va conecta la depozitul nostru
         return MinioClient.builder()
                 .endpoint(url)
                 .credentials(accessKey, secretKey)

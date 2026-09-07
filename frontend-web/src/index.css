@@ -26,3 +26,14 @@
 ::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
 }
+/* Ascunde butonul "Azi" din react-big-calendar in pagina de orar */
+.rbc-toolbar .rbc-btn-group:first-child button:first-child {
+    display: none !important;
+}
+
+/* Hide sidebar, header and chat drawer during active exams */
+body.exam-active aside,
+body.exam-active header,
+body.exam-active .chat-drawer-container {
+    display: none !important;
+}

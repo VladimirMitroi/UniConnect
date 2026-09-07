@@ -11,8 +11,11 @@ public class TestResult {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String studentEmail; // Luat din token-ul JWT
+    private String studentEmail;
     private String courseName;
     private Double score;
     private LocalDateTime date;
+
+    @Column(name = "violations_count", columnDefinition = "integer default 0")
+    private Integer violationsCount = 0;
 }

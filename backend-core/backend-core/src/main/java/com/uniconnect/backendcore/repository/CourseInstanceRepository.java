@@ -8,13 +8,11 @@ import java.util.List;
 
 public interface CourseInstanceRepository extends JpaRepository<CourseInstance, Long> {
 
-    // Pentru Profesori: aduce doar cursurile asignate lor
     List<CourseInstance> findByProfessorId(Long professorId);
 
-    // Pentru Studenți: Cursurile Obligatorii din oficiu pe baza grupei și seriei
-    List<CourseInstance> findByGrupaAndSerieAndIsMandatoryTrue(String grupa, String serie);
+    @Query("SELECT c FROM CourseInstance c WHERE c.isMandatory = true AND c.serie = :serie AND (c.grupa = :grupa OR c.grupa IS NULL OR c.grupa = '')")
+    List<CourseInstance> findMandatoryCoursesForStudent(@Param("grupa") String grupa, @Param("serie") String serie);
 
-    // Pentru Pagina de Explorare: Toate cursurile la care studentul NU aparține din oficiu
-    @Query("SELECT c FROM CourseInstance c WHERE c.grupa != :grupa OR c.isMandatory = false")
-    List<CourseInstance> findAllAvailableToExplore(@Param("grupa") String grupa);
+    @Query("SELECT c FROM CourseInstance c WHERE NOT (c.isMandatory = true AND c.serie = :serie AND (c.grupa = :grupa OR c.grupa IS NULL OR c.grupa = ''))")
+    List<CourseInstance> findAllAvailableToExplore(@Param("grupa") String grupa, @Param("serie") String serie);
 }

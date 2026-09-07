@@ -1,60 +1,51 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import {
+  fetchAllQuestions,
+  fetchQuestionCourses,
+  fetchFilteredQuestions,
+  updateQuestion,
+  deleteQuestion,
+} from '../api/questions';
 
 function VizualizareGrile() {
-  // Stările pentru Grile
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Stările pentru Filtrare (NOU)
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState('');
 
-  // Stările pentru Modalul de Editare
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Se rulează o singură dată când intri pe pagină
   useEffect(() => {
-    fetchCourses(); // Aducem lista de cursuri pentru dropdown
+    loadCourses(); // Aducem lista de cursuri pentru dropdown
   }, []);
 
-  // Se rulează automat de fiecare dată când schimbi opțiunea din dropdown! (NOU)
   useEffect(() => {
     if (selectedCourse === '') {
-      fetchQuestions(); // Dacă e "Toate cursurile", aducem tot
+      loadAllQuestions(); // Dacă e "Toate cursurile", aducem tot
     } else {
-      fetchFilteredQuestions(selectedCourse); // Dacă a ales un curs, filtrăm
+      loadFilteredQuestions(selectedCourse); // Dacă a ales un curs, filtrăm
     }
   }, [selectedCourse]);
 
-  // Funcția care aduce lista de cursuri unice din Java
-  const fetchCourses = async () => {
-    const token = localStorage.getItem('uniconnect_token');
+  const loadCourses = async () => {
     try {
-      const res = await axios.get('http://localhost:8080/api/questions/courses', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      // Eliminăm eventualele valori null din vechile teste
-      const cursuriValide = res.data.filter(curs => curs !== null);
+      const data = await fetchQuestionCourses();
+      const cursuriValide = data.filter(curs => curs !== null);
       setCourses(cursuriValide);
     } catch (err) {
       console.error("Eroare la încărcarea cursurilor:", err);
     }
   };
 
-  // Funcția care aduce DOAR grilele pentru cursul selectat
-  const fetchFilteredQuestions = async (numeCurs) => {
-    const token = localStorage.getItem('uniconnect_token');
+  const loadFilteredQuestions = async (numeCurs) => {
     setLoading(true);
     try {
-      // encodeURIComponent se asigură că spațiile din numele fișierului sunt trimise corect prin URL
-      const response = await axios.get(`http://localhost:8080/api/questions/filter?name=${encodeURIComponent(numeCurs)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setQuestions(response.data);
+      const data = await fetchFilteredQuestions(numeCurs);
+      setQuestions(data);
     } catch (err) {
       console.error("Eroare la filtrare:", err);
       setError('Nu am putut filtra întrebările.');
@@ -63,20 +54,11 @@ function VizualizareGrile() {
     }
   };
 
-  // Funcția veche care aduce absolut toate grilele
-  const fetchQuestions = async () => {
-    const token = localStorage.getItem('uniconnect_token');
-    if (!token) {
-      setError('Nu ești autentificat. Te rugăm să te loghezi.');
-      setLoading(false);
-      return;
-    }
+  const loadAllQuestions = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('http://localhost:8080/api/questions', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setQuestions(response.data);
+      const data = await fetchAllQuestions();
+      setQuestions(data);
     } catch (err) {
       console.error("Eroare la aducerea grilelor:", err);
       setError('Nu am putut încărca întrebările.');
@@ -85,27 +67,18 @@ function VizualizareGrile() {
     }
   };
 
-  // Funcția care deschide modalul cu datele întrebării selectate
   const openEditModal = (question) => {
-    // Facem o copie ca să nu modificăm direct starea principală până nu dăm "Salvează"
     setEditingQuestion(JSON.parse(JSON.stringify(question))); 
     setIsModalOpen(true);
   };
 
-  // Funcția care trimite modificările către Java
   const handleSaveEdit = async () => {
-    const token = localStorage.getItem('uniconnect_token');
     setIsSaving(true);
 
     try {
-      const response = await axios.put(
-        `http://localhost:8080/api/questions/${editingQuestion.id}`, 
-        editingQuestion,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
+      const updatedData = await updateQuestion(editingQuestion.id, editingQuestion);
 
-      // Actualizăm lista de pe ecran cu datele noi, fără să dăm refresh la pagină
-      setQuestions(questions.map(q => q.id === editingQuestion.id ? response.data : q));
+      setQuestions(questions.map(q => q.id === editingQuestion.id ? updatedData : q));
       setIsModalOpen(false); // Închidem fereastra
       setEditingQuestion(null);
     } catch (err) {
@@ -117,18 +90,13 @@ function VizualizareGrile() {
   };
 
   const handleDelete = async (id) => {
-    // Întrebăm profesorul dacă e sigur
     if (!window.confirm("Ești sigur că vrei să ștergi această întrebare? Această acțiune este ireversibilă.")) {
       return;
     }
 
-    const token = localStorage.getItem('uniconnect_token');
     try {
-      await axios.delete(`http://localhost:8080/api/questions/${id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await deleteQuestion(id);
 
-      // Scoatem întrebarea din lista de pe ecran imediat
       setQuestions(questions.filter(q => q.id !== id));
       alert("Întrebarea a fost ștearsă cu succes.");
     } catch (err) {
@@ -137,7 +105,6 @@ function VizualizareGrile() {
     }
   };
 
-  // Funcție utilitară pentru a schimba o opțiune specifică din array
   const handleOptionChange = (index, newValue) => {
     const noileOptiuni = [...editingQuestion.options];
     noileOptiuni[index] = newValue;
@@ -191,7 +158,7 @@ function VizualizareGrile() {
                 
                 <div className="space-y-2 mb-4">
                   {q.options && q.options.map((optiune, optIndex) => {
-                    const esteCorect = q.correctAnswer === optiune;
+                    const esteCorect = q.correctAnswers?.includes(optiune);
                     const litera = String.fromCharCode(65 + optIndex); 
                     return (
                       <div key={optIndex} className={`p-3 rounded-lg border flex items-start ${esteCorect ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800' : 'border-gray-100 dark:border-gray-700'}`}>
@@ -204,7 +171,7 @@ function VizualizareGrile() {
 
                 <div className="flex justify-between items-start mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                     <span className="text-sm font-medium text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-3 py-2 rounded-lg max-w-[70%] break-words">
-                        Răspuns: {q.correctAnswer}
+                        Răspuns: {(q.correctAnswers || []).join(', ')}
                     </span>
                     
                     <div className="flex gap-2 shrink-0 ml-2">
@@ -281,8 +248,8 @@ function VizualizareGrile() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Răspunsul Corect (Text exact)</label>
                 <select 
                   className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#0d121b] dark:text-white focus:ring-2 focus:ring-primary outline-none"
-                  value={editingQuestion.correctAnswer}
-                  onChange={(e) => setEditingQuestion({...editingQuestion, correctAnswer: e.target.value})}
+                      value={(editingQuestion.correctAnswers || [])[0] || ''}
+                      onChange={(e) => setEditingQuestion({ ...editingQuestion, correctAnswers: [e.target.value] })}
                 >
                   <option disabled value="">Selectează răspunsul corect</option>
                   {editingQuestion.options.map((opt, idx) => (

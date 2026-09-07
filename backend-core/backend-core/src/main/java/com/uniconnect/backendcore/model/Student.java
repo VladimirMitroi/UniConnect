@@ -16,7 +16,7 @@ public class Student {
     private Long id;
 
     @OneToOne
-    @MapsId // Spune Hibernate-ului să folosească ID-ul entității User ca Primary Key și pentru Student
+    @MapsId
     @JoinColumn(name = "user_id")
     private User user;
 
@@ -30,7 +30,7 @@ public class Student {
     private LocalDate dateOfBirth;
 
     @Column(name = "registration_number", unique = true, nullable = false)
-    private String registrationNumber; // Număr matricol
+    private String registrationNumber;
 
     @Column(name = "enrollment_year")
     private Integer enrollmentYear;
@@ -45,5 +45,5 @@ public class Student {
     private String groupName;
 
     @Column(name = "funding_type", length = 50)
-    private String fundingType; // Ex: "BUGET", "TAXA"
+    private String fundingType;
 }

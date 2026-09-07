@@ -17,8 +17,6 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    // Aceasta este cheia secretă cu care semnăm token-ul (în producție se ține în variabile de mediu)
-    // Este un string generat aleatoriu, encodat Base64 (minim 256 biți)
     private static final String SECRET_KEY = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
 
     public String extractUsername(String token) {
@@ -37,9 +35,9 @@ public class JwtService {
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         return Jwts.builder()
                 .setClaims(extraClaims)
-                .setSubject(userDetails.getUsername()) // Punem email-ul ca subiect
+                .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // Expiră în 24 de ore
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }

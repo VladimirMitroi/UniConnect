@@ -8,7 +8,6 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    // Spring Data JPA va scrie automat interogarea SQL (SELECT * FROM users WHERE email = ?)
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
 }

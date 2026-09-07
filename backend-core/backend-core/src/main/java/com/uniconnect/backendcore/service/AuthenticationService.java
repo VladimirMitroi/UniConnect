@@ -24,7 +24,6 @@ public class AuthenticationService {
 
     private final UserRepository userRepository;
 
-    // ADAUGĂM REPOSITORY-URILE PENTRU A ADUCE NUMELE DIN BAZA DE DATE
     private final StudentRepository studentRepository;
     private final ProfessorRepository professorRepository;
     private final AdminRepository adminRepository;
@@ -33,7 +32,6 @@ public class AuthenticationService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
-    // --- METODA ACTUALIZATĂ DE LOGIN ---
     public AuthResponse authenticate(AuthRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -44,8 +42,7 @@ public class AuthenticationService {
 
         var user = userRepository.findByEmail(request.getEmail()).orElseThrow();
 
-        // Extragem Numele Complet în funcție de Rol
-        String fullName = "Utilizator"; // Nume default de siguranță
+        String fullName = "Utilizator";
 
         if ("ROLE_STUDENT".equals(user.getRole())) {
             Student student = studentRepository.findById(user.getId()).orElse(null);
@@ -68,7 +65,6 @@ public class AuthenticationService {
 
         var jwtToken = jwtService.generateToken(user);
 
-        // Folosim noul AuthResponse cu toate cele 3 variabile!
         return AuthResponse.builder()
                 .token(jwtToken)
                 .role(user.getRole())
@@ -76,7 +72,6 @@ public class AuthenticationService {
                 .build();
     }
 
-    // --- METODA ACTUALIZATĂ DE REGISTER ---
     public AuthResponse register(RegisterRequest request) {
         var user = new User();
         user.setEmail(request.getEmail());
@@ -89,7 +84,7 @@ public class AuthenticationService {
         return AuthResponse.builder()
                 .token(jwtToken)
                 .role(user.getRole())
-                .name(request.getEmail()) // La un register simplu punem email-ul temporar
+                .name(request.getEmail())
                 .build();
     }
 }

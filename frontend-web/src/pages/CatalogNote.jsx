@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { fetchAverages as fetchAveragesApi, fetchCourseResults } from '../api/results';
+import { cleanFileName } from '../utils/fileUtils';
 
 function CatalogNote() {
   const [averages, setAverages] = useState([]);
@@ -8,28 +9,22 @@ function CatalogNote() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    fetchAverages();
+    loadAverages();
   }, []);
 
-  const fetchAverages = async () => {
-    const token = localStorage.getItem('uniconnect_token');
+  const loadAverages = async () => {
     try {
-      const res = await axios.get('http://localhost:8080/api/results/averages', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setAverages(res.data);
+      const data = await fetchAveragesApi();
+      setAverages(data);
     } catch (err) {
       console.error("Eroare la aducerea mediilor:", err);
     }
   };
 
   const showDetails = async (courseName) => {
-    const token = localStorage.getItem('uniconnect_token');
     try {
-      const res = await axios.get(`http://localhost:8080/api/results/course/${encodeURIComponent(courseName)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setDetails(res.data);
+      const data = await fetchCourseResults(courseName);
+      setDetails(data);
       setSelectedCourse(courseName);
       setIsModalOpen(true);
     } catch (err) {
@@ -66,7 +61,7 @@ function CatalogNote() {
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-primary"></div>
               <h3 className="text-lg font-bold text-[#0d121b] dark:text-white mb-4 line-clamp-2">
-                {avg.course}
+                {cleanFileName(avg.course)}
               </h3>
               
               <div className="mt-auto">
@@ -92,7 +87,7 @@ function CatalogNote() {
             <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-[#0d121b]">
               <div>
                 <h2 className="text-xl font-bold text-[#0d121b] dark:text-white">Registru Note</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{selectedCourse}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{cleanFileName(selectedCourse)}</p>
               </div>
               <button 
                 onClick={() => setIsModalOpen(false)} 
@@ -126,6 +121,11 @@ function CatalogNote() {
                         }`}>
                           {result.score.toFixed(2)}
                         </span>
+                        {result.violationsCount > 0 && (
+                          <span title={`${result.violationsCount} abateri de la modul de examinare (a ieșit din pagină)`} className="ml-2 inline-block px-2 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                            ⚠️ {result.violationsCount}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

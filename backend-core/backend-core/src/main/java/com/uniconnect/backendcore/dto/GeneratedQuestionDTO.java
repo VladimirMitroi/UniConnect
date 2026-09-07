@@ -10,6 +10,6 @@ public class GeneratedQuestionDTO {
     private String question;
     private List<String> options;
     private List<String> correctAnswers;
-    private String type; // NOU: Pentru single/multiple
-    private Long testId; // NOU: Înlocuiește courseName
+    private String type;
+    private Long testId;
 }

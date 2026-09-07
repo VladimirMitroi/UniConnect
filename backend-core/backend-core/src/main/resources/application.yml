@@ -14,6 +14,10 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  servlet:
+    multipart:
+      max-file-size: -1
+      max-request-size: -1
   rabbitmq:
     host: localhost
     port: 5672
@@ -24,7 +28,7 @@ server:
   port: 8080
 
 minio:
-  url: http://localhost:9000 # Folosim portul 9000 pentru API, nu 9001 (care e pentru interfața web)
+  url: http://localhost:9000
   access-key: minioadmin
   secret-key: minioadmin123
   bucket-name: uniconnect-documents

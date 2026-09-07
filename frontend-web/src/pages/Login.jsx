@@ -1,21 +1,29 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios'; // Importăm axios pentru apelul către Java
+import { login, loadAndStoreProfile } from '../api/auth';
 
 function Login() {
-  // Aici definim 'setError' și restul stărilor! Fără ele, React dă eroare.
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   
+  const [activeModal, setActiveModal] = useState(null); // 'password' | 'support' | 'privacy' | null
+  
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetSuccess, setResetSuccess] = useState(false);
+
+  const [supportName, setSupportName] = useState('');
+  const [supportEmail, setSupportEmail] = useState('');
+  const [supportDesc, setSupportDesc] = useState('');
+  const [supportSuccess, setSupportSuccess] = useState(false);
+
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError(''); // Curățăm erorile vechi
 
-    // VALIDĂRI FRONTEND
     if (!email.trim() || !password.trim()) {
       setError('Te rugăm să completezi ambele câmpuri.');
       return; 
@@ -27,36 +35,48 @@ function Login() {
     }
 
     try {
-      // APELUL CĂTRE JAVA
-      const response = await axios.post('http://localhost:8080/api/auth/login', {
-        email: email,
-        password: password
-      });
+      const response = await login(email, password);
 
-      // Salvăm datele în LocalStorage
-      const token = response.data.token;
-      const userRole = response.data.role; // Preluăm rolul
-      
-      localStorage.setItem('uniconnect_token', token);
-      localStorage.setItem('uniconnect_role', userRole); 
-      localStorage.setItem('uniconnect_name', response.data.name);
-      
-      console.log("Logare cu succes! Token salvat:", token);
+      localStorage.setItem('uniconnect_token', response.token);
+      localStorage.setItem('uniconnect_role', response.role);
+      localStorage.setItem('uniconnect_name', response.name);
 
-      // REDIRECȚIONARE DINAMICĂ ÎN FUNCȚIE DE ROL
+      await loadAndStoreProfile();
+      const userRole = response.role;
+
       if (userRole === 'ROLE_ADMIN') {
-        navigate('/admin/sistem');
+        navigate('/anunturi');
       } else if (userRole === 'ROLE_TEACHER') {
         navigate('/dashboard-profesor');
       } else {
-        navigate('/catalog'); // Default pentru Student
+        navigate('/catalog');
       }
-
     } catch (err) {
-      console.error("Eroare la logare:", err);
-      // Dacă Java returnează eroare (ex: 403 Forbidden - parolă greșită)
+      console.error('Eroare la logare:', err);
       setError('Email sau parolă incorectă. Te rugăm să încerci din nou.');
     }
+  };
+
+  const handlePasswordReset = (e) => {
+    e.preventDefault();
+    if (!resetEmail) return;
+    setResetSuccess(true);
+  };
+
+  const handleSupportTicket = (e) => {
+    e.preventDefault();
+    if (!supportName || !supportEmail || !supportDesc) return;
+    setSupportSuccess(true);
+  };
+
+  const closeModal = () => {
+    setActiveModal(null);
+    setResetSuccess(false);
+    setResetEmail('');
+    setSupportSuccess(false);
+    setSupportName('');
+    setSupportEmail('');
+    setSupportDesc('');
   };
 
   return (
@@ -135,9 +155,13 @@ function Login() {
                 </button>
               </div>
               <div className="flex justify-end mt-1">
-                <a href="#" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+                <button 
+                  type="button" 
+                  onClick={() => setActiveModal('password')} 
+                  className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                >
                   Ai uitat parola?
-                </a>
+                </button>
               </div>
             </div>
 
@@ -150,11 +174,91 @@ function Login() {
           </form>
         </div>
 
-        <div className="flex justify-center gap-6 mt-6">
-          <a href="#" className="text-sm text-[#4c669a] dark:text-[#a0aec0] hover:text-primary dark:hover:text-primary transition-colors">Suport Tehnic</a>
-          <a href="#" className="text-sm text-[#4c669a] dark:text-[#a0aec0] hover:text-primary dark:hover:text-primary transition-colors">Confidențialitate</a>
+        <div className="flex justify-center gap-6 mt-6 relative z-10">
+          <button onClick={() => setActiveModal('support')} className="text-sm text-[#4c669a] dark:text-[#a0aec0] hover:text-primary dark:hover:text-primary transition-colors">Suport Tehnic</button>
+          <button onClick={() => setActiveModal('privacy')} className="text-sm text-[#4c669a] dark:text-[#a0aec0] hover:text-primary dark:hover:text-primary transition-colors">Confidențialitate</button>
         </div>
       </div>
+
+      {/* MODALS */}
+      {activeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          
+          {/* PASSWORD MODAL */}
+          {activeModal === 'password' && (
+            <div className="bg-white dark:bg-[#1a202c] rounded-xl shadow-2xl border border-[#e5e7eb] dark:border-[#2d3748] w-full max-w-md p-6 relative">
+              <button onClick={closeModal} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><span className="material-symbols-outlined text-primary">lock_reset</span> Resetare Parolă</h3>
+              {resetSuccess ? (
+                <div className="text-center py-6">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-600 mb-4">
+                    <span className="material-symbols-outlined text-2xl">check</span>
+                  </div>
+                  <p className="font-medium text-green-600">Un email cu instrucțiunile de resetare a fost trimis, dacă adresa există în sistem!</p>
+                  <button onClick={closeModal} className="mt-6 w-full py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Închide</button>
+                </div>
+              ) : (
+                <form onSubmit={handlePasswordReset}>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Introdu adresa de email instituțională pentru a primi link-ul de resetare a parolei.</p>
+                  <input required type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)} placeholder="student@universitate.ro" className="w-full p-3 rounded-lg border border-[#cfd7e7] dark:border-[#4a5568] bg-[#f8f9fc] dark:bg-[#2d3748] focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none mb-4" />
+                  <button type="submit" className="w-full py-3 bg-primary text-white rounded-lg font-bold hover:bg-primary/90 transition-colors">Trimite link</button>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* SUPPORT MODAL */}
+          {activeModal === 'support' && (
+            <div className="bg-white dark:bg-[#1a202c] rounded-xl shadow-2xl border border-[#e5e7eb] dark:border-[#2d3748] w-full max-w-md p-6 relative">
+              <button onClick={closeModal} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><span className="material-symbols-outlined text-primary">support_agent</span> Suport Tehnic</h3>
+              {supportSuccess ? (
+                <div className="text-center py-6">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-600 mb-4">
+                    <span className="material-symbols-outlined text-2xl">check</span>
+                  </div>
+                  <p className="font-medium text-green-600">Tichetul tău (#{(Math.random() * 9000 + 1000).toFixed(0)}) a fost înregistrat cu succes! Echipa IT te va contacta pe email.</p>
+                  <button onClick={closeModal} className="mt-6 w-full py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Închide</button>
+                </div>
+              ) : (
+                <form onSubmit={handleSupportTicket} className="space-y-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Deschide un tichet pentru echipa de asistență tehnică IT.</p>
+                  <input required type="text" value={supportName} onChange={e => setSupportName(e.target.value)} placeholder="Numele tău complet" className="w-full p-3 rounded-lg border border-[#cfd7e7] dark:border-[#4a5568] bg-[#f8f9fc] dark:bg-[#2d3748] focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none" />
+                  <input required type="email" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} placeholder="Adresa de email pentru contact" className="w-full p-3 rounded-lg border border-[#cfd7e7] dark:border-[#4a5568] bg-[#f8f9fc] dark:bg-[#2d3748] focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none" />
+                  <textarea required value={supportDesc} onChange={e => setSupportDesc(e.target.value)} rows={3} placeholder="Descrie problema întâmpinată..." className="w-full p-3 rounded-lg border border-[#cfd7e7] dark:border-[#4a5568] bg-[#f8f9fc] dark:bg-[#2d3748] focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none resize-none"></textarea>
+                  <button type="submit" className="w-full py-3 bg-primary text-white rounded-lg font-bold hover:bg-primary/90 transition-colors">Deschide Tichet</button>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* PRIVACY MODAL */}
+          {activeModal === 'privacy' && (
+            <div className="bg-white dark:bg-[#1a202c] rounded-xl shadow-2xl border border-[#e5e7eb] dark:border-[#2d3748] w-full max-w-lg p-6 relative max-h-[80vh] flex flex-col">
+              <button onClick={closeModal} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><span className="material-symbols-outlined text-primary">policy</span> Confidențialitate (GDPR)</h3>
+              <div className="overflow-y-auto pr-2 text-sm text-gray-600 dark:text-gray-300 space-y-4">
+                <p>Platforma <strong>UniConnect</strong> procesează datele dumneavoastră cu caracter personal în conformitate cu Regulamentul General privind Protecția Datelor (GDPR). Scopul prelucrării este strict educațional și administrativ.</p>
+                <h4 className="font-bold text-[#0d121b] dark:text-white mt-4">1. Colectarea Datelor</h4>
+                <p>Colectăm date precum: nume, prenume, adresă de email instituțională, loguri de acces, evaluări academice (note, teme, prezențe).</p>
+                <h4 className="font-bold text-[#0d121b] dark:text-white mt-4">2. Integrarea cu Inteligența Artificială</h4>
+                <p>Documentele încărcate și interogările adresate asistentului educațional (Chatbot) sunt procesate în mod anonimizat. Datele sensibile nu sunt folosite pentru a antrena modele publice de inteligență artificială.</p>
+                <h4 className="font-bold text-[#0d121b] dark:text-white mt-4">3. Drepturile dumneavoastră</h4>
+                <p>Aveți dreptul de a solicita accesul, rectificarea sau ștergerea datelor, precum și restricționarea prelucrării, contactând Departamentul IT.</p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button onClick={closeModal} className="w-full py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Am înțeles</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

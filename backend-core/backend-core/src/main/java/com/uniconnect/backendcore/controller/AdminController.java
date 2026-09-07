@@ -3,8 +3,10 @@ package com.uniconnect.backendcore.controller;
 import com.uniconnect.backendcore.dto.UserCreationDTO;
 import com.uniconnect.backendcore.model.*;
 import com.uniconnect.backendcore.repository.*;
+import com.uniconnect.backendcore.service.CourseSectionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -23,24 +25,23 @@ public class AdminController {
     private final CourseInstanceRepository courseInstanceRepository;
     private final PasswordEncoder passwordEncoder;
     private final AdminRepository adminRepository;
+    private final CourseSectionService courseSectionService;
 
     @PostMapping("/users/create")
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<?> createUser(@RequestBody UserCreationDTO dto) {
 
-        // 0. Verificăm dacă email-ul există deja (și ne oprim aici dacă există)
         if (userRepository.existsByEmail(dto.getEmail())) {
             return ResponseEntity.badRequest().body(Map.of("error", "Email-ul există deja!"));
         }
 
-        // 1. Creăm entitatea de Login (User) - Acum variabila savedUser ia naștere!
         User newUser = new User();
         newUser.setEmail(dto.getEmail());
         newUser.setPassword(passwordEncoder.encode(dto.getPassword()));
         newUser.setRole(dto.getRole());
         User savedUser = userRepository.save(newUser);
 
-        // 2. Creăm Profilul specific în funcție de Rol (Folosind savedUser-ul de mai sus)
         if ("ROLE_STUDENT".equals(dto.getRole())) {
             Student student = new Student();
             student.setUser(savedUser);
@@ -73,7 +74,6 @@ public class AdminController {
             professorRepository.save(prof);
 
         } else if ("ROLE_ADMIN".equals(dto.getRole())) {
-            // MUTAT AICI! Acum recunoaște savedUser fără probleme.
             Admin admin = new Admin();
             admin.setUser(savedUser);
             admin.setFirstName(dto.getFirstName());
@@ -86,8 +86,23 @@ public class AdminController {
     }
 
     @PostMapping("/courses/create")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createCourseInstance(@RequestBody CourseInstance course) {
+        if (course.getProfessorId() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "ID-ul profesorului este obligatoriu!"));
+        }
+        
+        var profOpt = professorRepository.findById(course.getProfessorId());
+        if (profOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Profesorul cu ID-ul " + course.getProfessorId() + " nu există în baza de date!"));
+        }
+        
+        Professor prof = profOpt.get();
+        String title = prof.getAcademicRank() != null ? prof.getAcademicRank() + " " : "";
+        course.setProfessorName(title + prof.getLastName() + " " + prof.getFirstName());
+
         CourseInstance savedCourse = courseInstanceRepository.save(course);
-        return ResponseEntity.ok(Map.of("message", "Curs creat și asignat cu succes!", "course", savedCourse));
+        courseSectionService.generateWeeksForCourse(savedCourse);
+        return ResponseEntity.ok(Map.of("message", "Curs creat și structura de săptămâni a fost generată cu succes!", "course", savedCourse));
     }
 }
