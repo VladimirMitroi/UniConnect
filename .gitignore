@@ -1,16 +1,15 @@
-# Compiled class file
+# ============================================================
+# UniConnect - .gitignore
+# ============================================================
+
+# ----- SECURITATE: Fisiere cu date sensibile -----
+.env
+*.env
+docker-compose.env
+!*.env.example
+
+# ----- Java / Maven -----
 *.class
-
-# Log file
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
 *.jar
 *.war
 *.nar
@@ -18,7 +17,50 @@
 *.zip
 *.tar.gz
 *.rar
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+*.log
+*.ctxt
+.mtj.tmp/
 hs_err_pid*
 replay_pid*
+target/
+*.iml
+
+# ----- IDE -----
+.idea/
+.vscode/
+*.suo
+*.user
+.project
+.classpath
+.settings/
+
+# ----- Python -----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ----- Node.js / Frontend -----
+node_modules/
+dist/
+.cache/
+.parcel-cache/
+*.local
+
+# ----- macOS -----
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ----- Altele -----
+*.tmp
+*.bak
+*.swp

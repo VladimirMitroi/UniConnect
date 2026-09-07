@@ -1,10 +1,10 @@
+import os
 import pika
 import threading
 import fitz  # PyMuPDF
 from docx import Document
 from pptx import Presentation
 import io
-import fitz  # PyMuPDF
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from minio import Minio
@@ -14,21 +14,28 @@ import re
 import uvicorn
 from gtts import gTTS
 import uuid
+from dotenv import load_dotenv
 
-genai.configure(api_key="AIzaSyAp7CspUhuK53ZkBbIWB4QNULCi_DFo1fQ") 
+load_dotenv()
+
+gemini_api_key = os.getenv("GEMINI_API_KEY")
+if not gemini_api_key:
+    raise RuntimeError("GEMINI_API_KEY nu este setat! Creaza un fisier .env dupa modelul .env.example")
+
+genai.configure(api_key=gemini_api_key)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 minio_client = Minio(
-    "localhost:9000",
-    access_key="minioadmin",
-    secret_key="minioadmin123",
+    os.getenv("MINIO_ENDPOINT", "localhost:9000"),
+    access_key=os.getenv("MINIO_ACCESS_KEY", "minioadmin"),
+    secret_key=os.getenv("MINIO_SECRET_KEY", "minioadmin123"),
     secure=False
 )
 
 app = FastAPI(title="UniConnect AI Service")
 
 def rabbitmq_consumer():
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=os.getenv("RABBITMQ_HOST", "localhost")))
     channel = connection.channel()
     channel.queue_declare(queue='course_queue', durable=True)
 
